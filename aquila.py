@@ -51,7 +51,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # Transmit images forever
 while running:
 	
-	jpeg = picam_grab_jpeg((1024, 768))
+	jpeg = picam_grab_jpeg((1440, 960))
 	pkts = s.encode_jpeg(jpeg)
 	
 	for pkt in pkts:
