@@ -1,5 +1,5 @@
 
-# Aquila - experiments in 10kbit/s wenet
+# Aquila - experiments in 12.5kbit/s wenet
 
 Transmits images using wenet, a fast data mode for high altitude balloon flights.
 
