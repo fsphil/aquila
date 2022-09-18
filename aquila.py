@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import ssdv
+import signal
 from sx127x import sx127x
 from wenet import wenet
 
@@ -38,14 +39,24 @@ radio.start_tx(packets, frequency, 5000)
 # Setup the SSDV encoder
 s = ssdv.encoder(callsign, quality = 4, fec = False)
 
+running = True
+
+def signal_handler(sig, frame):
+	global running
+	running = False
+
+signal.signal(signal.SIGINT, signal_handler)
+
 # Transmit images forever
-while True:
+while running:
 	
 	jpeg = picam_grab_jpeg((1024, 768))
 	pkts = s.encode_jpeg(jpeg)
 	
 	for pkt in pkts:
 		packets.write('ssdv', pkt)
+		if not running:
+			break
 
 radio.stop_tx()
 
