@@ -11,6 +11,7 @@ from picamera import PiCamera
 
 callsign = 'AQUILA'
 frequency = 434500000
+bitrate = 12500
 
 def picam_grab_jpeg(resolution):
 	
@@ -34,7 +35,7 @@ def picam_grab_jpeg(resolution):
 # Setup the radio
 packets = wenet()
 radio = sx127x(0, 1)
-radio.start_tx(packets, frequency, 5000)
+radio.start_tx(packets, frequency, bitrate)
 
 # Setup the SSDV encoder
 s = ssdv.encoder(callsign, quality = 4, fec = False)

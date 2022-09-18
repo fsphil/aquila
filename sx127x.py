@@ -17,23 +17,28 @@ class sx127x:
 		self.spi.open(bus, device)
 		self.spi.max_speed_hz = 10000000
 	
-	def start_tx(self, pkt_source, frequency, deviation):
+	def start_tx(self, pkt_source, frequency, bitrate):
 		
-		# Configure the radio for wenet @ 10kbit/s,
+		# Configure the radio for wenet,
 		# enable the transmitter and start the
 		# transmit thread.
 		
 		# Place the radio into FSK and sleep mode
 		self.write(0x01, 0x00)
 		
-		# 10,000 bit/s
-		self.write(0x02, int(round(self.fxosc / 10000)), 2)
+		# Set the bitrate
+		i = int(round(self.fxosc / bitrate))
+		self.bitrate = self.fxosc / i
+		print('sx127x: Using bitrate: {:,} bit/s'.format(self.bitrate))
+		self.write(0x02, i, 2)
 		
-		# Set the deviation
-		self.write(0x04, int(round(deviation / self.fstep)), 2)
+		# Set the deviation (bitrate * 0.5)
+		i = int(round(bitrate * 0.5 / self.fstep))
+		self.write(0x04, i, 2)
 		
 		# Set the centre frequency
-		self.write(0x06, int(round(frequency / self.fstep)), 3)
+		i = int(round(frequency / self.fstep))
+		self.write(0x06, i, 3)
 		
 		# Set the power output level to 10 dB, / 10 mW
 		self.write(0x09, (1 << 7) | (15 - (17 - 10)))
@@ -48,6 +53,7 @@ class sx127x:
 		self.write(0x32, 0) # Zero length packet
 		
 		# Start transmitting when at least 32 bytes are in the FIFO
+		# This also sets the threshold for the FifoLevel interrupt
 		self.write(0x35, 32 - 1)
 		
 		# Setup DIO pins
@@ -92,12 +98,24 @@ class sx127x:
 			# Fetch the next packet
 			packet = self.pkt_source.read()
 			
-			# Transmit the packet in chunks up to 32 bytes long
+			# Transmit the packet in chunks of
+			# 32 bytes, or 50% of the FIFO buffer
 			for x in range(0, len(packet), 32):
 				
 				# Wait until the FIFO is ready
-				while self.irq() & (1 << 5):
-					time.sleep(0.0016) # Noooooo
+				while True:
+					i = self.irq()
+					if i & (1 << 6):
+						# Print a note if the FIFO was found to be empty,
+						# as this likely indicates an underflow
+						print('E')
+					
+					if i & (1 << 5) == 0:
+						break
+					
+					# Sleep at least as long as it takes the
+					# radio to send 16 byes (25% of the FIFO)
+					time.sleep(1 / self.bitrate * 16 * 8)
 				
 				self.write(0x00, packet[x:x + 32])
 		
